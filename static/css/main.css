@@ -126,6 +126,7 @@ h1::after {
 .app-features {
     margin: 15px 0;
     padding-left: 20px;
+    list-style-type: none;
 }
 
 .app-features li {
