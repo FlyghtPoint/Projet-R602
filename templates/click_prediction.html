@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Prédiction de clic</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <!-- Écran de sélection du modèle -->
+    <div class="container mt-5" id="initial-selection">
+        <h1 class="mb-4">Prédiction de clic</h1>
+        <!-- Choix du modèle -->
+        <div class="mb-4">
+            <label class="mr-2">Choisir le modèle :</label>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="model_choice" id="python_model" value="python" checked> 
+                <label class="form-check-label" for="python_model">Modèle Python</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="model_choice" id="tfjs_model" value="tfjs"> 
+                <label class="form-check-label" for="tfjs_model">Modèle TensorFlow.js</label>
+            </div>
+        </div>
+        <button id="choose-model" class="btn btn-primary">Choisir</button>
+    </div>
+
+    <!-- Formulaire de prédiction (affiché après le choix du modèle) -->
+    <div class="container mt-5" id="model-loaded" style="display: none;">
+        <div id="model-status" class="alert alert-success"></div>
+        <form id="prediction-form">
+            <div class="form-group">
+                <label for="time_spent">Daily Time Spent on Site :</label>
+                <input type="number" step="any" class="form-control" name="time_spent" id="time_spent" required>
+            </div>
+            <div class="form-group">
+                <label for="age">Age :</label>
+                <input type="number" step="any" class="form-control" name="age" id="age" required>
+            </div>
+            <div class="form-group">
+                <label for="area_income">Area Income :</label>
+                <input type="number" step="any" class="form-control" name="area_income" id="area_income" required>
+            </div>
+            <div class="form-group">
+                <label for="internet_usage">Daily Internet Usage :</label>
+                <input type="number" step="any" class="form-control" name="internet_usage" id="internet_usage" required>
+            </div>
+            <div class="form-group">
+                <label for="gender">Gender :</label>
+                <select class="form-control" name="gender" id="gender" required>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Prédire</button>
+        </form>
+        <!-- Affichage du résultat de la prédiction -->
+        <div id="prediction-result" class="mt-4" style="display: none;">
+            <div class="alert alert-info" id="result-message"></div>
+            <button id="reset-prediction" class="btn btn-secondary">Nouvelle prédiction</button>
+        </div>
+        <!-- Bouton pour revenir à l'écran de choix -->
+        <button id="global-reset" class="btn btn-warning mt-3">Réinitialiser l'application</button>
+    </div>
+
+    <!-- Chargement des scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="{{ url_for('static', filename='js/tf_model.js') }}"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        // Variables globales
+        let selectedModel = null;
+        let loadedTFModel = null;
+
+        // Fonction d'affichage du formulaire de prédiction
+        function showPredictionForm(modelText) {
+            document.getElementById('model-status').innerText = modelText;
+            document.getElementById('initial-selection').style.display = 'none';
+            document.getElementById('model-loaded').style.display = 'block';
+        }
+
+        // Écouteur sur le bouton "Choisir"
+        document.getElementById("choose-model").addEventListener("click", async function() {
+            this.disabled = true;
+            const choice = document.querySelector('input[name="model_choice"]:checked').value;
+            if (choice === "python") {
+                console.log("Entraînement du modèle Python en cours...");
+                // Appeler l'endpoint '/train_python'
+                const response = await fetch("/train_python", {
+                    method: "POST"
+                });
+                const resJson = await response.json();
+                console.log("Modèle Python entraîné avec précision : " + resJson.accuracy);
+                selectedModel = "python";
+                showPredictionForm("Modèle Python chargé avec succès.");
+            } else if (choice === "tfjs") {
+                console.log("Vérification du modèle TensorFlow.js dans localStorage...");
+                const models = await tf.io.listModels();
+                if (models['localstorage://tfjs-model']) {
+                    console.log("Modèle TF.js trouvé dans localStorage, chargement...");
+                    loadedTFModel = await tf.loadLayersModel('localstorage://tfjs-model');
+                    console.log("Modèle TF.js chargé depuis localStorage.");
+                } else {
+                    console.log("Aucun modèle TF.js trouvé, entraînement en cours...");
+                    loadedTFModel = await trainAndSaveTFModel();
+                }
+                selectedModel = "tfjs";
+                showPredictionForm("Modèle TensorFlow.js chargé avec succès.");
+            }
+        });
+
+        // Intercepter la soumission du formulaire pour lancer la prédiction
+        document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const timeSpent = parseFloat(document.getElementById('time_spent').value);
+            const age = parseFloat(document.getElementById('age').value);
+            const areaIncome = parseFloat(document.getElementById('area_income').value);
+            const internetUsage = parseFloat(document.getElementById('internet_usage').value);
+            const genderStr = document.getElementById('gender').value;
+            const gender = (genderStr.toLowerCase() === 'male') ? 0 : 1;
+
+            if (selectedModel === "python") {
+                console.log("Lancement de la prédiction avec le modèle Python...");
+                const formData = new FormData();
+                formData.append("time_spent", timeSpent);
+                formData.append("age", age);
+                formData.append("area_income", areaIncome);
+                formData.append("internet_usage", internetUsage);
+                formData.append("gender", genderStr);
+                
+                // Appeler l'endpoint de prédiction Python
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    body: formData
+                });
+                const responseText = await response.text();
+                // Extraction du résultat depuis le HTML renvoyé
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(responseText, "text/html");
+                const predElement = doc.querySelector(".alert.alert-info strong");
+                const prediction = predElement ? predElement.innerText : "indéterminé";
+                document.getElementById("result-message").innerText = 
+                    (prediction == 1) ? "Le modèle Python prédit que l'utilisateur cliquera sur l'annonce." : "Le modèle Python prédit que l'utilisateur ne cliquera pas sur l'annonce.";
+            } else if (selectedModel === "tfjs") {
+                console.log("Lancement de la prédiction avec le modèle TensorFlow.js...");
+                let inputTensor = tf.tensor2d([[timeSpent, age, areaIncome, internetUsage, gender]]);
+                // Appliquer la standardisation si scalerMean et scalerStd sont définis
+                if (window.scalerMean && window.scalerStd) {
+                    const meanTensor = window.scalerMean.reshape([1, 5]);
+                    const stdTensor = window.scalerStd.reshape([1, 5]);
+                    inputTensor = inputTensor.sub(meanTensor).div(stdTensor);
+                } else {
+                    console.warn("Paramètres du scaler non disponibles.");
+                }
+                const predictionTensor = loadedTFModel.predict(inputTensor);
+                const predictionData = await predictionTensor.data();
+                const prediction = (predictionData[0] > 0.5) ? 1 : 0;
+                document.getElementById("result-message").innerText = 
+                    (prediction === 1) ? "Le modèle TensorFlow.js prédit que l'utilisateur cliquera sur l'annonce." : "Le modèle TensorFlow.js prédit que l'utilisateur ne cliquera pas sur l'annonce.";
+            }
+            // Afficher le résultat de la prédiction
+            document.getElementById("prediction-result").style.display = "block";            
+        });
+
+        // Bouton pour réinitialiser uniquement le formulaire de prédiction
+        document.getElementById("reset-prediction").addEventListener("click", function() {
+            document.getElementById("prediction-form").reset();
+            document.getElementById("prediction-result").style.display = "none";
+        });
+
+        // Bouton de réinitialisation global : revient à l'écran de choix
+        document.getElementById("global-reset").addEventListener("click", function() {
+            document.getElementById("initial-selection").style.display = "block";
+            document.getElementById("model-loaded").style.display = "none";
+            document.getElementById("choose-model").disabled = false;
+        });          
+    </script>
+</body>
+</html>

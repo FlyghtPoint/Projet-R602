@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projet R602 - Développement Web</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Projet R602 - Développement Web</h1>
+        <p class="subtitle">Applications utilisant l'intelligence artificielle pour faire des prédictions</p>
+        
+        <div class="apps">
+            <div class="app-card">
+                <div class="app-header">
+                    <h2><i class="fas fa-mouse-pointer"></i> Prédiction de Clic</h2>
+                    <p>Intelligence artificielle & comportement utilisateur</p>
+                </div>
+                <div class="app-body">
+                    <p>Cette application prédit si un utilisateur cliquera sur une publicité en fonction de ses caractéristiques.</p>
+                    <ul class="app-features">
+                        <li>Modèle d'apprentissage automatique Python ou TensorFlow.js</li>
+                        <li>Analyse de données utilisateur</li>
+                        <li>Prédictions du comportement attendu</li>
+                    </ul>
+                </div>
+                <div class="app-footer">
+                    <a href="{{ url_for('click_prediction') }}" class="btn btn-click">Accéder à l'application</a>
+                </div>
+            </div>
+            
+            <div class="app-card">
+                <div class="app-header">
+                    <h2><i class="fas fa-smile"></i> Reconnaissance d'expression faciale</h2>
+                    <p>Analyse d'expressions faciales en temps réel</p>
+                </div>
+                <div class="app-body">
+                    <p>Détecte et analyse les expressions faciales en temps réel via votre webcam.</p>
+                    <ul class="app-features">
+                        <li>Utilise face-api.js</li>
+                        <li>Analyse de 7 émotions différentes</li>
+                        <li>Points de repère faciaux détaillés</li>
+                    </ul>
+                </div>
+                <div class="app-footer">
+                    <a href="{{ url_for('face_recognition') }}" class="btn btn-face">Accéder à l'application</a>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2025 - Projet R602 Développement Web et Dispositifs Interactifs</p>
+        </footer>
+    </div>
+</body>
+</html>
